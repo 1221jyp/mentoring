@@ -3,6 +3,15 @@ const express = require("express");
 const router = express.Router();
 const connection = require("../db");
 
+// Helper function to convert hex to RGB
+function hexToRgb(hex) {
+  const bigint = parseInt(hex.slice(1), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return { r, g, b };
+}
+
 //이메일 확인 미들웨어
 const emailFilterMiddleware = (req, res, next) => {
   const allowedEmails = ["1221jyp@gmail.com", "seosky1225@gmail.com"]; // 허용할 이메일 배열
@@ -138,6 +147,146 @@ router.post("/api/enroll", (req, res) => {
       }
     }
   });
+});
+
+router.post("/api/submit-color", async (req, res) => {
+  console.log("Session in /api/submit-color:", req.session);
+  console.log("User in session in /api/submit-color:", req.session.user);
+  if (!req.session.user || !req.session.user.id) {
+    return res.status(401).json({ error: "로그인이 필요합니다." });
+  }
+
+  const { challengeColorHex, submittedColorHex } = req.body;
+  const userId = req.session.user.id;
+
+  if (!challengeColorHex || !submittedColorHex) {
+    return res.status(400).json({ error: "문제 색상과 제출 색상이 모두 필요합니다." });
+  }
+
+  try {
+    const challengeRgb = hexToRgb(challengeColorHex);
+    const submittedRgb = hexToRgb(submittedColorHex);
+
+    const query =
+      "INSERT INTO color_submissions (user_id, challenge_color_r, challenge_color_g, challenge_color_b, submitted_color_r, submitted_color_g, submitted_color_b) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *";
+    const values = [
+      userId,
+      challengeRgb.r,
+      challengeRgb.g,
+      challengeRgb.b,
+      submittedRgb.r,
+      submittedRgb.g,
+      submittedRgb.b,
+    ];
+
+    const result = await connection.query(query, values);
+    res.status(201).json({ message: "색상 제출 성공", submission: result.rows[0] });
+  } catch (error) {
+    console.error("색상 제출 오류:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+router.get("/api/scoreboard", async (req, res) => {
+  try {
+    // 날짜 파라미터 확인 (YYYY-MM-DD 형식)
+    const targetDateParam = req.query.date;
+    console.log("Received targetDateParam:", targetDateParam);
+    let targetDate;
+    let challengeColor = null; // challengeColor를 null로 초기화
+
+    if (targetDateParam) {
+      // 파라미터가 있으면 해당 날짜 사용
+      targetDate = targetDateParam;
+    } else {
+      // 파라미터가 없으면 어제 날짜 사용
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      targetDate = yesterday.toISOString().split("T")[0]; // YYYY-MM-DD 형식
+    }
+    console.log("Using targetDate for query:", targetDate);
+
+    // 해당 날짜의 모든 색상 데이터 가져오기
+    const submissionsQuery = `
+      SELECT
+        cs.user_id,
+        cs.submitted_color_r,
+        cs.submitted_color_g,
+        cs.submitted_color_b,
+        cs.challenge_color_r,
+        cs.challenge_color_g,
+        cs.challenge_color_b,
+        u.name,
+        u.picture,
+        cs.submission_date
+      FROM
+        color_submissions cs
+      JOIN
+        users u ON cs.user_id = u.id
+      WHERE
+        cs.submission_date = $1;
+    `;
+    const submissionsResult = await connection.query(submissionsQuery, [targetDate]);
+    const submissions = submissionsResult.rows;
+
+    if (submissions.length > 0) {
+      console.log("Sample submission_date from DB:", submissions[0].submission_date);
+      // 문제 색상 (첫 번째 제출에서 가져옴)
+      challengeColor = {
+        r: submissions[0].challenge_color_r,
+        g: submissions[0].challenge_color_g,
+        b: submissions[0].challenge_color_b,
+      };
+      console.log("Challenge Color from DB:", challengeColor); // 디버깅 로그 추가
+    }
+
+    // 평균 색상 계산
+    let sumR = 0,
+      sumG = 0,
+      sumB = 0;
+    submissions.forEach((sub) => {
+      sumR += sub.submitted_color_r;
+      sumG += sub.submitted_color_g;
+      sumB += sub.submitted_color_b;
+    });
+
+    const avgR = sumR / submissions.length;
+    const avgG = sumG / submissions.length;
+    const avgB = sumB / submissions.length;
+
+    // 유클리드 거리 계산 및 점수화
+    const scoreboard = submissions.map((sub) => {
+      const distance = Math.sqrt(
+        Math.pow(sub.submitted_color_r - avgR, 2) +
+          Math.pow(sub.submitted_color_g - avgG, 2) +
+          Math.pow(sub.submitted_color_b - avgB, 2)
+      );
+      return {
+        user_id: sub.user_id,
+        name: sub.name,
+        picture: sub.picture,
+        submitted_color: {
+          r: sub.submitted_color_r,
+          g: sub.submitted_color_g,
+          b: sub.submitted_color_b,
+        },
+        distance: distance,
+      };
+    });
+
+    // 거리가 짧은 순서대로 정렬 (점수가 낮을수록 좋음)
+    scoreboard.sort((a, b) => a.distance - b.distance);
+
+    res.status(200).json({
+      message: `${targetDate} 스코어보드 데이터`,
+      average_color: { r: Math.round(avgR), g: Math.round(avgG), b: Math.round(avgB) },
+      challenge_color: challengeColor, // 문제 색상 추가
+      scoreboard: scoreboard,
+    });
+  } catch (error) {
+    console.error("스코어보드 API 오류:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 module.exports = router;
