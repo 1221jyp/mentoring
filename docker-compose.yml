@@ -1,0 +1,22 @@
+# // docker compose up
+
+#docker-compose.yml
+#개발 환경 구성
+
+version: "3.8"
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    container_name: yeolpumta
+    ports:
+      - "5700:5700"
+    environment:
+      - NODE_ENV=development
+    command: npm run dev # 개발 환경에서는 nodemon 사용
+    volumes:
+      - ./server:/app # ✅ 서버 코드 자동 반영 (핫 리로드)
+      - /app/node_modules # ✅ node_modules는 컨테이너 내부 유지
+      - ./client/build:/app/build # ✅ 로컬에서 빌드된 React 파일을 서버에서 제공

@@ -1,0 +1,8 @@
+version: "3.8"
+
+services:
+  server:
+    volumes:
+      - ./server:/app # ✅ 서버 코드 변경 시 자동 반영
+      - /app/node_modules # ✅ node_modules는 컨테이너 내부 유지
+      - ./client/build:/app/build # ✅ React 빌드 결과를 서버에서 자동 반영
