@@ -4,6 +4,7 @@ import GlobalStyle from './styles/GlobalStyle';
 import Header from './components/Header';
 import MainPage from './pages/MainPage';
 import ResultPage from './pages/ResultPage';
+import PredictColorPage from './pages/PredictColorPage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/results" element={<ResultPage />} />
+        <Route path="/predict-color" element={<PredictColorPage />} />
       </Routes>
     </Router>
   );

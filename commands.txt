@@ -1,0 +1,7 @@
+API 테스트를 위한 curl 명령어:
+
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"challenge_color": [255, 0, 0]}' \
+     http://localhost:5700/api/get-predicted-color
+
+# 참고: [255, 0, 0] 대신 예측하고 싶은 색상의 RGB 값을 입력하세요.

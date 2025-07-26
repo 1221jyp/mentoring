@@ -116,6 +116,7 @@ function Header() {
       <NavLinks>
         <Link to="/">Home</Link>
         <Link to="/results">Results</Link>
+        <Link to="/predict-color">Predict Color</Link>
       </NavLinks>
       <AuthContainer>
         {isLoggedIn ? (

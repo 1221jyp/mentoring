@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# ML Model
+color_prediction_model.h5
+
+# macOS
+.DS_Store
