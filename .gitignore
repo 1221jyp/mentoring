@@ -14,3 +14,6 @@ ml_server/color_prediction_model.h5
 
 # Python virtual environments
 venv/
+
+# Temporary files
+commands.txt
