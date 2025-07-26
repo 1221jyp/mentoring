@@ -5,7 +5,7 @@ FROM node:18
 WORKDIR /app
 
 # 서버 코드 복사
-COPY ./server/package.json ./server/package-lock.json ./
+COPY ./server/package*.json ./
 RUN npm install
 
 # ✅ 클라이언트 빌드 결과를 서버에 복사
@@ -15,4 +15,4 @@ COPY ./client/build /app/build
 COPY ./server /app
 
 # 서버 실행
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

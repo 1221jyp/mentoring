@@ -1,0 +1,5 @@
+tensorflow-macos
+tensorflow-metal
+flask
+psycopg2-binary
+scikit-learn
